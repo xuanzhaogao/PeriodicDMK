@@ -1,0 +1,85 @@
+@mainpage Overview
+
+[TOC]
+
+[![build](https://github.com/TRIQS/nda/workflows/build/badge.svg?branch=unstable)](https://github.com/TRIQS/nda/actions?query=workflow%3Abuild)
+
+> This is the homepage of **TRIQS/nda v@PROJECT_VERSION@**. The source code can be found on [GitHub](https://github.com/TRIQS/nda).
+
+**nda** is a C++ library providing an efficient and flexible multi-dimensional array class.
+It is an essential building-block of the [TRIQS](https://github.com/TRIQS/triqs) project.
+
+Some features include
+* coded in C++17/20 using concepts
+* expressions are implemented lazily for maximum performance
+* flexible and lightweight view types
+* matrix and vector class with BLAS/LAPACK backend
+* easily store and retrieve arrays to and from HDF5 files using [TRIQS/h5](https://github.com/TRIQS/h5)
+* common MPI functionality using [TRIQS/mpi](https://github.com/TRIQS/mpi)
+* Python bindings
+* GPU and CUDA support
+* and more.
+
+
+@section motivation Motivating example
+
+```cpp
+#include <nda/nda.hpp>
+#include <nda/h5.hpp>
+
+#include <h5/h5.hpp>
+
+int main() {
+  // create an array of shape (4,4,4)
+  nda::array<long, 3> A(4, 4, 4);
+
+  // create an array given its data
+  nda::array<long, 2> B{{1, 2}, {3, 4}, {5, 6}};
+
+  // assign a scalar to the full array or a single element
+  A() = 0;
+  A(0, 1, 2) = 40;
+
+  // access single elements
+  int a = A(0, 1, 2) + B(0, 1);
+
+  // access a slice of the array of shape (3, 2)
+  auto V = A(range(0, 3), range(0, 2), 0);
+
+  // lazy arithmetic operations
+  auto C = V + 2 * B; // C is an expression
+  auto D = nda::make_regular(C); // D is an array
+
+  // various algorithms
+  min_element(V);
+  max_element(V);
+  sum(V);
+
+  // write to HDF5 file
+  {
+    h5::file file("dat.h5", 'w');
+    h5::write(file, "A", A);
+  }
+
+  // read from HDF5 file
+  array<long, 3> D;
+  {
+    h5::file file("dat.h5", 'r');
+    h::read(file, "A", D);
+  }
+}
+```
+
+
+@section start Where to start?
+
+The @ref installation section tells you how to get the library and make it available on your system.
+
+@ref integration explains how to integrate **nda** in your own C++ code.
+
+Then, you can start with the @ref examples section to get an overview of the library's features and how
+**nda** can be used in practice.
+
+Furthermore, we provide a detailed reference @ref documentation to answer your questions.
+
+If you experience any problem with the library, you can post an @ref issues "Issue" on GitHub.

@@ -1,0 +1,184 @@
+name: build
+
+on:
+  push:
+    branches: [ unstable, '[0-9]+.[0-9]+.x' ]
+  pull_request:
+    branches: [ unstable, '[0-9]+.[0-9]+.x' ]
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
+  CCACHE_COMPILERCHECK: content
+  CCACHE_BASEDIR: ${{ github.workspace }}
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 500M
+  CCACHE_SLOPPINESS: pch_defines,time_macros,include_file_mtime,include_file_ctime
+  CCACHE_COMPRESS: "1"
+  CCACHE_COMPRESSLEVEL: "1"
+
+jobs:
+  build:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+        cxx: [g++, clang++]
+        doc: [OFF]
+        cov: [OFF]
+        python_hdf5: [ON, OFF]
+        openmp_mpi: [ON, OFF]
+        include:
+          # Full build with coverage
+          - {os: ubuntu-24.04, cxx: g++, doc: OFF, cov: ON, python_hdf5: ON, openmp_mpi: ON }
+          # Full build with Documentation
+          - {os: macos-15, cxx: clang++, doc: ON, cov: OFF, python_hdf5: ON, openmp_mpi: ON }
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ccache-${{ matrix.os }}-${{ matrix.cxx }}-${{ github.run_id }}
+        restore-keys:
+          ccache-${{ matrix.os }}-${{ matrix.cxx }}-
+
+    - name: Set cxx variables
+      run: |
+        if [[ ${{ matrix.os }} == 'macos-15' && ${{ matrix.cxx }} == 'g++' ]]; then
+          echo "CXX=g++-15" >> $GITHUB_ENV
+        else
+          echo "CXX=${{ matrix.cxx }}" >> $GITHUB_ENV
+        fi
+
+    - name: Install ubuntu dependencies
+      if: ${{ contains(matrix.os, 'ubuntu') }}
+      run: >
+        sudo apt-get update &&
+        sudo apt-get install lsb-release wget software-properties-common &&
+        sudo apt-get install
+        ccache
+        clang
+        cmake
+        g++
+        gfortran
+        hdf5-tools
+        libclang-dev
+        libc++-dev
+        libc++abi-dev
+        libomp-dev
+        libfftw3-dev
+        libgfortran5
+        libgmp-dev
+        libhdf5-dev
+        libopenblas-dev
+        libopenmpi-dev
+        openmpi-bin
+        openmpi-common
+        openmpi-doc
+        python3-clang
+        python3-dev
+        python3-mako
+        python3-mpi4py
+        python3-numpy
+        python3-pip
+        python3-scipy
+        python3-ipython
+
+    - name: Set up virtualenv
+      run: |
+        mkdir $HOME/.venv
+        python3 -m venv --system-site-packages $HOME/.venv/my_python
+        source $HOME/.venv/my_python/bin/activate
+        echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
+        echo "PATH=$PATH" >> $GITHUB_ENV
+
+    - name: Install homebrew dependencies
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        brew update
+        brew install ccache gcc llvm hdf5 open-mpi openblas doxygen
+        pip install mako numpy scipy mpi4py
+        pip install -r requirements.txt
+        echo "PATH=$(brew --prefix llvm)/bin:$(brew --prefix gcc)/bin:$PATH" >> $GITHUB_ENV
+        echo "PYTHONPATH=$(brew --prefix llvm)/lib/python3.13/site-packages" >> $GITHUB_ENV
+        echo "SDKROOT=$(xcrun --show-sdk-path)" >> $GITHUB_ENV
+
+    - name: Add clang CXXFLAGS
+      if: ${{ matrix.cxx == 'clang++' }}
+      run: |
+        echo "CXXFLAGS=-stdlib=libc++" >> $GITHUB_ENV
+
+    - name: Set up test coverage
+      if: matrix.cov == 'ON'
+      run: |
+        pip install gcovr
+        echo "CXXFLAGS=--coverage" >> $GITHUB_ENV
+
+    - name: Prepare source files for doxygen
+      if: matrix.doc == 'ON'
+      working-directory: ./c++/nda
+      run: |
+        sed -e '/#include .*impl.*.hpp/{r _impl_basic_array_view_common.hpp' -e 'd' -e '}' basic_array.hpp > tmp_basic_array.hpp
+        sed -e '/#include .*impl.*.hpp/{r _impl_basic_array_view_common.hpp' -e 'd' -e '}' basic_array_view.hpp > tmp_basic_array_view.hpp
+        mv tmp_basic_array.hpp basic_array.hpp
+        mv tmp_basic_array_view.hpp basic_array_view.hpp
+
+    - name: Build nda
+      run: |
+        mkdir build && cd build
+        cmake .. \
+          -DCMAKE_INSTALL_PREFIX=$HOME/install \
+          -DBuild_Documentation=${{ matrix.doc }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.cov == 'ON' && 'Debug' || 'Release' }} \
+          -DPythonSupport=${{ matrix.python_hdf5 }} \
+          -DHDF5Support=${{ matrix.python_hdf5 }} \
+          -DOpenMPSupport=${{ matrix.openmp_mpi }} \
+          -DMPISupport=${{ matrix.openmp_mpi }}
+        make -j2 || make -j1 VERBOSE=1
+
+    - name: Test nda
+      env:
+        OPENBLAS_NUM_THREADS: "1"
+      run: |
+        cd build
+        ctest -j2 --output-on-failure
+
+    - name: Generate test coverage HTML output
+      if: matrix.cov == 'ON'
+      run: |
+        cd build
+        mkdir coverage
+        gcovr --gcov-executable "gcov" --root ../c++ --html-details -o coverage/coverage.html .
+
+    - name: ccache statistics
+      if: always()
+      run: ccache -sv
+
+    - uses: actions/cache/save@v4
+      if: always()
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ccache-${{ matrix.os }}-${{ matrix.cxx }}-${{ github.run_id }}
+
+    - name: Deploy documentation
+      if: matrix.doc == 'ON' && github.ref == 'refs/heads/unstable'
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        folder: build/doc/html
+        branch: github.io
+        target-folder: docs/unstable
+
+    - name: Deploy test coverage
+      if: matrix.cov == 'ON' && github.ref == 'refs/heads/unstable'
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        folder: build/coverage
+        branch: github.io
+        target-folder: docs/coverage

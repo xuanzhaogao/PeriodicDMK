@@ -1,0 +1,536 @@
+/**
+ * @defgroup arrays_views Arrays and views
+ * @brief Multi-dimensional arrays and views and functions to create, transform and access them in multiple ways.
+ *
+ * @details The generic array (nda::basic_array) and view (nda::basic_array_view) classes form the backbone of the
+ * **nda** library. They are used to store and access multi-dimensional data and provide a wide range of operations and
+ * functions to manipulate them.
+ *
+ * Regular arrays own the memory they use for storing the data that means they are responsible for managing their
+ * memory storage. Views on the other hand do not own the memory they point to. They provide a lightweight alternative
+ * to access the data of regular arrays or other views.
+ */
+
+/**
+ * @defgroup av_algs Algorithms
+ * @ingroup arrays_views
+ * @brief Various algorithms that can be applied to arrays and views.
+ *
+ * @details We can group the different algorithms into
+ *
+ * - Algorithms similar to the standard library: nda::all, nda::any, nda::max_element, nda::min_element.
+ * - Reduction algorithms: nda::product, nda::sum.
+ * - Generic algorithm: nda::fold.
+ */
+
+/**
+ * @defgroup av_ops Arithmetic operations
+ * @ingroup arrays_views
+ * @brief All the usual arithmetic operations that can be applied to arrays and views.
+ *
+ * @details Arithmetic operations are (mostly) implemented as lazy expressions. That means they do not return the result
+ * right away but one of the following proxy objects instead:
+ *
+ * - nda::expr: A lazy binary expression for the arithmetic binary operations (`+`, `-`, `*`, `/`).
+ * - nda::expr_unary: A lazy unary expression for negation.
+ *
+ * These lazy expressions all satisfy the nda::Array concept and can therefore be used to assign to or construct
+ * nda::basic_array and nda::basic_array_view objects. Another way to evaluate lazy expressions is with
+ * nda::make_regular:
+ *
+ * @code{.cpp}
+ * // create two arrays A and B
+ * auto A = nda::array<int, 2>({{1, 2}, {3, 4}});
+ * auto B = nda::array<int, 2>({{5, 6}, {7, 8}});
+ *
+ * // add them elementwise
+ * auto ex = A + B; // C is an nda::expr object
+ *
+ * // evaluate the lazy expression by constructing a new array
+ * nda::array<int, 2> C = ex;
+ *
+ * // evaluate the lazy expression using nda::make_regular
+ * auto D = nda::make_regular(ex);
+ * @endcode
+ *
+ * Note that the behavior of the arithmetic operations depends on the algebra of the involved array or view types:
+ *
+ * @code{.cpp}
+ * // multiply two arrays elementwise
+ * auto A1 = nda::array<int, 2>({{1, 2}, {3, 4}});
+ * auto A2 = nda::array<int, 2>({{5, 6}, {7, 8}});
+ * nda::array<int, 2> A3 = A1 * A2;
+ * std::cout << A3 << std::endl;
+ *
+ * // multiply two matrices
+ * auto M1 = nda::matrix<int>({{1, 2}, {3, 4}});
+ * auto M2 = nda::matrix<int>({{5, 6}, {7, 8}});
+ * nda::matrix<int> M3 = M1 * M2;
+ * std::cout << M3 << std::endl;
+ * @endcode
+ *
+ * Output:
+ *
+ * ```
+ *
+ * [[5,12]
+ *  [21,32]]
+ *
+ * [[19,22]
+ *  [43,50]]
+ * ```
+ */
+
+/**
+ * @defgroup av_utils Array/View utilities
+ * @ingroup arrays_views
+ * @brief Type traits, concepts and more functionality related to array and view types.
+ */
+
+/**
+ * @defgroup av_factories Factories and transformations
+ * @ingroup arrays_views
+ * @brief Various functions to create new array/view objects and to transform existing ones.
+ *
+ * @details We can group the different functions into
+ *
+ * - Factories and transformations for arrays: nda::arange, nda::concatenate, nda::diag, nda::eye, nda::make_regular,
+ * nda::ones, nda::rand, nda::resize_or_check_if_view, nda::to_device, nda::to_host, nda::to_unified, nda::vstack,
+ * nda::zeros.
+ * - Factories and transformations for views: nda::diagonal, nda::flatten, nda::group_indices_view,
+ * nda::make_array_view, nda::make_array_const_view, nda::make_const_view, nda::make_matrix_view,
+ * nda::permuted_indices_view, nda::reinterpret_add_fast_dims_of_size_one, nda::reshape, nda::transpose,
+ * nda::transposed_view.
+ *
+ * Note that some of the functions might return an array, a view, a scalar or a lazy expression depending on the input
+ * arguments.
+ */
+
+/**
+ * @defgroup av_hdf5 HDF5 support
+ * @ingroup arrays_views
+ * @brief HDF5 support for nda::basic_array and nda::basic_array_view objects.
+ *
+ * @details **nda** uses the <a href="https://github.com/TRIQS/h5">TRIQS/h5</a> library to provide functions to write
+ * (nda::h5_write) and read (nda::h5_read) arrays and views to and from HDF5 files.
+ *
+ * The following example demonstrates some of these features:
+ *
+ * @code{.cpp}
+ * #include <nda/h5.hpp>
+ * #include <nda/nda.hpp>
+ *
+ * #include <h5/h5.hpp>
+ *
+ * int main(int argc, char **argv) {
+ *   // create a 4x2 array with random values
+ *   auto A = nda::rand(4, 2);
+ *
+ *   // write the array to an HDF5 file
+ *   h5::file file("A.h5", 'w');
+ *   h5::write(file, "A", A);
+ * }
+ * @endcode
+ *
+ * Dumping the content of "A.h5":
+ *
+ * ```
+ * HDF5 "A.h5" {
+ * GROUP "/" {
+ *    DATASET "A" {
+ *       DATATYPE  H5T_IEEE_F64LE
+ *       DATASPACE  SIMPLE { ( 4, 2 ) / ( 4, 2 ) }
+ *       DATA {
+ *       (0,0): 0.956845, 0.201094,
+ *       (1,0): 0.995133, 0.29042,
+ *       (2,0): 0.729235, 0.0153893,
+ *       (3,0): 0.96194, 0.481198
+ *       }
+ *    }
+ * }
+ * }
+ * ```
+ */
+
+/**
+ * @defgroup av_mpi MPI support
+ * @ingroup arrays_views
+ * @brief MPI support for nda::basic_array and nda::basic_array_view objects.
+ *
+ * @details **nda** uses the <a href="https://github.com/TRIQS/mpi">TRIQS/mpi</a> library to provide functions to
+ * broadcast, gather, reduce and scatter arrays and views over MPI processes.
+ *
+ * The following example demonstrates some of these features:
+ *
+ * @code{.cpp}
+ * #include <mpi/mpi.hpp>
+ * #include <nda/mpi.hpp>
+ * #include <nda/nda.hpp>
+ *
+ * #include <iostream>
+ *
+ * int main(int argc, char **argv) {
+ *   // initialize MPI environment
+ *   mpi::environment env(argc, argv);
+ *   mpi::communicator comm;
+ *
+ *   // create a 2x2 array on each process and fill it with its rank
+ *   nda::array<int, 2> A(2, 2);
+ *   A() = comm.rank();
+ *
+ *   // reduce the array over all processes
+ *   auto A_sum = mpi::reduce(A);
+ *
+ *   // print the result
+ *   if (comm.rank() == 0) std::cout << A_sum << std::endl;
+ * }
+ * @endcode
+ *
+ * Running with 4 cores outputs:
+ *
+ * ```
+ *
+ * [[6,6]
+ *  [6,6]]
+ * ```
+ *
+ * Se @ref ex6 for a more in-depth example.
+ */
+
+/**
+ * @defgroup av_math Mathematical functions
+ * @ingroup arrays_views
+ * @brief Various mathematical functions that can be applied to arrays and views.
+ *
+ * @details Mathematical functions are (mostly) implemented as lazy expressions. That means they do not return the
+ * result right away but the following proxy object instead:
+ *
+ * - nda::expr_call: A lazy function call expression.
+ *
+ * This lazy function call expression satisfies the nda::Array concept and can therefore be used to assign to or
+ * construct nda::basic_array and nda::basic_array_view objects. Another way to evaluate lazy expressions is with
+ * nda::make_regular:
+ *
+ * @code{.cpp}
+ * // create an array A
+ * auto A = nda::array<int, 2>({{1, 2}, {3, 4}});
+ *
+ * // square the elements of A
+ * auto ex = nda::pow(A, 2); // ex is a lazy expression
+ *
+ * // evaluate the lazy expression by constructing a new array
+ * nda::array<int, 2> A_sq = ex;
+ * std::cout << A_sq << std::endl;
+ *
+ * // evaluate the lazy expression using nda::make_regular
+ * std::cout << nda::make_regular(ex) << std::endl;
+ * @endcode
+ *
+ * Output:
+ *
+ * ```
+ * [[1,4]
+ *  [9,16]]
+ *
+ * [[1,4]
+ *  [9,16]]
+ * ```
+ */
+
+/**
+ * @defgroup av_sym Symmetries
+ * @ingroup arrays_views
+ * @brief Tools to use and detect symmetries in nda::Array objects.
+ *
+ * @details Here is a simple example of how symmetries can be used in **nda**:
+ *
+ * @code{.cpp}
+ * #include <nda/nda.hpp>
+ * #include <nda/sym_grp.hpp>
+ *
+ * #include <array>
+ * #include <complex>
+ * #include <functional>
+ * #include <initializer_list>
+ * #include <iostream>
+ * #include <tuple>
+ * #include <vector>
+ *
+ * int main() {
+ *   constexpr int N = 3;
+ *
+ *   // typedefs for the symmetry group
+ *   using idx_t      = std::array<long, 2>;
+ *   using sym_t      = std::tuple<idx_t, nda::operation>;
+ *   using sym_func_t = std::function<sym_t(idx_t const &)>;
+ *
+ *   // create an hermitian matrix
+ *   auto A = nda::array<std::complex<double>, 2>::rand(N, N);
+ *   for (int i = 0; i < N; ++i) {
+ *     for (int j = i + 1; j < N; ++j) A(i, j) = std::conj(A(j, i));
+ *   }
+ *
+ *   // hermitian symmetry (satisfies nda::NdaSymmetry)
+ *   auto h_symmetry = [](idx_t const &x) {
+ *     idx_t xp = {x[1], x[0]};
+ *     return sym_t{xp, nda::operation{false, true}}; // sign flip = false, complex conjugate = true
+ *   };
+ *
+ *   // construct the symmetry group
+ *   auto grp = nda::sym_grp{A, std::vector<sym_func_t>{h_symmetry}};
+ *
+ *   // create an initializer function (satisfies nda::NdaInitFunc)
+ *   auto init_func = [&A](idx_t const &x) { return std::apply(A, x); };
+ *
+ *   // initialize a second array using the symmetry group and array A
+ *   nda::array<std::complex<double>, 2> B(N, N);
+ *   grp.init(B, init_func);
+ *
+ *   // output A and B
+ *   std::cout << A << std::endl;
+ *   std::cout << B << std::endl;
+ *
+ *   // get representative data (should be a vector of size 6)
+ *   auto vec = grp.get_representative_data(A);
+ *   std::cout << "\n" << nda::array_view<std::complex<double>, 1>(vec) << std::endl;
+ * }
+ * @endcode
+ *
+ * Output:
+ *
+ * ```
+ * A:
+ * [[(0.79407,0.479187),(0.0316266,-0.885449),(0.620883,-0.589129)]
+ *  [(0.0316266,0.885449),(0.431919,0.784867),(0.25658,-0.197428)]
+ *  [(0.620883,0.589129),(0.25658,0.197428),(0.972195,0.354817)]]
+ *
+ * B:
+ * [[(0.79407,0.479187),(0.0316266,-0.885449),(0.620883,-0.589129)]
+ *  [(0.0316266,0.885449),(0.431919,0.784867),(0.25658,-0.197428)]
+ *  [(0.620883,0.589129),(0.25658,0.197428),(0.972195,0.354817)]]
+ *
+ * Representative data:
+ * [(0.79407,0.479187),(0.0316266,-0.885449),(0.620883,-0.589129),(0.431919,0.784867),(0.25658,-0.197428),(0.972195,0.354817)]
+ * ```
+ *
+ * It first creates a hermitian matrix `A` and uses the symmetry `h_symmetry`, i.e. `A(i, j) = std::conj(A(j, i))`, to
+ * construct the corresponding symmetry group. The symmetry group can then be used to initialize other arrays, get the
+ * representative data of an array with the same symmetry and more.
+ */
+
+/**
+ * @defgroup av_types Typedefs
+ * @ingroup arrays_views
+ * @brief Various typedefs/aliases of the most useful array and view types.
+ */
+
+/**
+ * @defgroup clef Compile-time lazy expressions and functions
+ * @brief Generic lazy expressions and tools to manipulate them.
+ *
+ * @details Lazy expressions are called lazy because they are not evaluated right away. Instead, they usually return
+ * some proxy, i.e. lazy, object which can be used to create new lazy expressions and which can be evaluated whenever
+ * the result is actually needed.
+ */
+
+/**
+ * @defgroup clef_autoassign Automatic assignment
+ * @ingroup clef
+ * @brief Automatic assignment uses lazy expressions and placeholders to simplify assigning values to multi-dimensional
+ * arrays/views and other container like objects.
+ *
+ * @details The following example shows how to fill a 2-dimensional nda::array of size 3 with the values 0, 1, 2, 10, 11
+ * and 12:
+ *
+ * @code{.cpp}
+ * nda::clef::placeholder<0> i_;
+ * nda::clef::placeholder<1> j_;
+ * nda::array<int, 2> a(2, 3);
+ * a(i_, j_) << 10 * i_ + j_;
+ * @endcode
+ *
+ * @note The `operator<<` in line 3 calls the `clef_auto_assign` overload for nda::array objects.
+ *
+ * We can also use auto assignment to fill a std::vector of size 3 with the values 10, 20 and 30:
+ *
+ * @code{.cpp}
+ * nda::clef::placeholder<0> i_;
+ * std::vector<int> v(3);
+ * nda::clef::make_expr(v)[i_] << 10 * (i_ + 1);
+ * @endcode
+ *
+ * @note The `operator<<` in line 3 calls the `clef_auto_assign_subscript` overload for std::vector objects.
+ */
+
+/**
+ * @defgroup clef_utils CLEF utilities
+ * @ingroup clef
+ * @brief Various internally used type traits and overloads of the `operator<<` to output lazy objects to a
+ * std::ostream.
+ */
+
+/**
+ * @defgroup clef_eval Evaluation of lazy objects
+ * @ingroup clef
+ * @brief A generic nda::clef::eval function which forwards the evaluation to specialized evaluators.
+ */
+
+/**
+ * @defgroup clef_expr Lazy expressions, functions and operations
+ * @ingroup clef
+ * @brief Classes that represent lazy expressions, functions and operations.
+ */
+
+/**
+ * @defgroup clef_placeholders Placeholders
+ * @ingroup clef
+ * @brief Lazy objects that can be used in lazy expressions.
+ *
+ * @details When a lazy expression is evaluated, one usually assigns a value to the placeholders which are then plugged
+ * into the expression.
+ */
+
+/**
+ * @defgroup linalg Linear algebra
+ * @brief Linear algebra related functionality.
+ */
+
+/**
+ * @defgroup linalg_blas BLAS interface
+ * @ingroup linalg
+ * @brief Interface to parts of the BLAS library.
+ */
+
+/**
+ * @defgroup linalg_blas_utils BLAS utilities
+ * @ingroup linalg
+ * @brief Utilities for the BLAS/LAPACK interface.
+ */
+
+/**
+ * @defgroup linalg_lapack LAPACK interface
+ * @ingroup linalg
+ * @brief Interface to parts of the LAPACK library.
+ */
+
+/**
+ * @defgroup linalg_tools Linear algebra tools
+ * @ingroup linalg
+ * @brief Generic functions that wrap the BLAS and LAPACK interfaces to provide a more user-friendly approach for the
+ * most common linear algebra related tasks.
+ */
+
+/**
+ * @defgroup layout Memory layout
+ * @brief Different memory layouts and tools to access specific data in a block of memory.
+ *
+ * @details Under the hood, a multi-dimensional array (an nda::basic_array) or view (an nda::basic_array_view) is
+ * just some "1-dimensional" block of (contiguous) memory. It only gets its multi-dimensional character because we
+ * choose to interpret the memory in a certain way. By interpreting the same block of memory in another way, we get
+ * a new but possibly quite different array/view. To be consistent, it is therefore important to specify exactly
+ * how the elements of an array/view are laid out in memory.
+ *
+ * Once the layout has been specified, we need tools that allow us to access single elements or more complicated
+ * parts of an array/view (slices). That means we need to map multi-dimensional indices to a linear/flat index and
+ * vice versa.
+ */
+
+/**
+ * @defgroup layout_pols Layout policies
+ * @ingroup layout
+ * @brief Various layout policies that can be used with nda::basic_array and nda::basic_array_view.
+ */
+
+/**
+ * @defgroup layout_utils Layout utilities
+ * @ingroup layout
+ * @brief Enums, type traits, bounds checking, looping over multi-dimensional indices, structs that mimic Python's `:`
+ * and `...` syntax and more.
+ */
+
+/**
+ * @defgroup layout_idx Multi-dimensional indexing
+ * @ingroup layout
+ * @brief Map multi-dimensional indices to a linear/flat index and vice versa and calculate the resulting memory layout
+ * when taking slices of already existing arrays/views.
+ */
+
+/**
+ * @defgroup memory Memory management
+ * @brief Classes, functions and definitions to manage different kinds of memory.
+ */
+
+/**
+ * @defgroup mem_addrspcs Address spaces
+ * @ingroup memory
+ * @brief Currently supported address spaces and tools to work with them.
+ *
+ * @details See nda::mem::AddressSpace for currently supported address spaces.
+ */
+
+/**
+ * @defgroup mem_allocators Allocators
+ * @ingroup memory
+ * @brief Custom allocators that satisfy the nda::mem::Allocator concept and allocator wrappers that check for memory
+ * leaks and collect statistics on memory allocations.
+ */
+
+/**
+ * @defgroup mem_handles Handles
+ * @ingroup memory
+ * @brief Memory handles that manage a specific block of memory.
+ */
+
+/**
+ * @defgroup mem_pols Memory policies
+ * @ingroup memory
+ * @brief Various memory managing policies that can be used with nda::basic_array and nda::basic_array_view.
+ */
+
+/**
+ * @defgroup mem_utils Memory utilities
+ * @ingroup memory
+ * @brief Generic versions (w.r.t. the different address spaces) of memory managing functions as well as other
+ * tools related to memory management.
+ */
+
+/**
+ * @defgroup testing Testing tools
+ * @brief Convenient tools for checking nda::basic_array and nda::basic_array_view objects with googletest.
+ */
+
+/**
+ * @defgroup utilities Utilities
+ * @brief Type traits, concepts, extensions to the standard library and permutations.
+ */
+
+/**
+ * @defgroup utils_type_traits Type traits
+ * @ingroup utilities
+ * @brief General type traits used throughout the **nda** library.
+ */
+
+/**
+ * @defgroup utils_concepts Concepts
+ * @ingroup utilities
+ * @brief General concepts used throughout the **nda** library.
+ */
+
+/**
+ * @defgroup utils_std Extensions to the standard library
+ * @ingroup utilities
+ * @brief Some convenient extensions to the standard library.
+ *
+ * @details The following extensions are provided:
+ * - Arithmetic operations for std::complex and other scalar types.
+ * - Some convenient functions for std::array objects like element-wise arithmetic operations, writing to std::ostream
+ * and adding or removing elements.
+ * - Missing concepts for older compiler versions.
+ * - A custom exception class (nda::runtime_error) which inherits from std::runtime_error.
+ */
+
+/**
+ * @defgroup utils_perms Permutations
+ * @ingroup utilities
+ * @brief Tools to create and work with permutations.
+ */

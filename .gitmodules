@@ -1,0 +1,10 @@
+[submodule "cpp/extern/SCTL"]
+	path = cpp/extern/SCTL
+	url = https://github.com/blackwer/SCTL
+[submodule "cpp/extern/spdlog"]
+	path = cpp/extern/spdlog
+	url = https://github.com/gabime/spdlog.git
+	branch = v1.x
+[submodule "cpp/extern/nda"]
+	path = cpp/extern/nda
+	url = https://github.com/blackwer/nda.git

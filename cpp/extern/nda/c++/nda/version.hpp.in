@@ -1,0 +1,18 @@
+/**
+ * @file
+ * @brief Version information for the nda library.
+ */
+
+#ifndef NDA_VERSION_HPP
+#define NDA_VERSION_HPP
+
+#define NDA_VERSION "@PROJECT_VERSION@"
+#define NDA_VERSION_MAJOR "@PROJECT_VERSION_MAJOR@"
+#define NDA_VERSION_MINOR "@PROJECT_VERSION_MINOR@"
+#define NDA_VERSION_PATCH "@PROJECT_VERSION_PATCH@"
+
+#ifndef NDA_GIT_HASH
+#define NDA_GIT_HASH "@PROJECT_GIT_HASH@"
+#endif // NDA_GIT_HASH
+
+#endif // NDA_VERSION_HPP
