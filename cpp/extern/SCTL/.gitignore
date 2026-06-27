@@ -1,9 +1,0 @@
-/bin/*
-/obj/*
-.vscode/
-*.swp
-*.swo
-*vtu
-doc/_build
-doc/_doxygen
-*~
