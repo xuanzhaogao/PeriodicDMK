@@ -1,2 +1,4 @@
 # PeriodicDMK
-An Adaptive Fast Algorithm for Periodic Coulomb Lattice Sums in Arbitrary Unit Cells
+
+Main contributors: Shidong Jiang (sjiang@flatironinstitute.org) and Xuanzhao Gao (xgao@flatironinstitute.org)
+
