@@ -14,7 +14,9 @@ and its colleague neighbourhood) and a smooth windowed kernel applied via a
 NUFFT far field (DUCC backend), plus a PSWF self-correction. The solver is
 exposed as a build-once / evaluate-many tree with a C++ and a Julia API.
 
-Main contributors: Shidong Jiang (sjiang@flatironinstitute.org) and Xuanzhao Gao (xgao@flatironinstitute.org)
+Main contributors: Shidong Jiang (sjiang@flatironinstitute.org) and Xuanzhao Gao (xgao@flatironinstitute.org).
+
+For benchmark scripts and data, see https://github.com/xuanzhaogao/PeriodicDMK_Benchmark/.
 
 ## Layout
 
